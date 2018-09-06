@@ -1,0 +1,47 @@
+
+
+DECLARE @JsonOutput AS NVARCHAR(MAX)
+DECLARE @SourceTalbe AS TABLE (
+	APP_CODE		VARCHAR(60)
+	,APP_VALUE		VARCHAR(60)
+)
+INSERT INTO @SourceTalbe(APP_CODE,APP_VALUE)
+VALUES
+	('Key1','Value1')
+	,('Key2','Value2')
+	,('Key3','Value3')
+
+SET @JsonOutput = NULL
+
+;WITH SourceData AS (
+	SELECT (',' + STUFF(
+			(SELECT
+				CONCAT(',' ,'"' , ASE.APP_CODE , '":"' , STRING_ESCAPE(APP_VALUE,'json') , '"')
+			FROM @SourceTalbe  ASE			where ASE.APP_CODE = Src.APP_CODE
+			FOR XML PATH(''),TYPE).value('.','VARCHAR(MAX)')
+			,1
+			,1
+			,''
+		)
+	) AS DataOutPut
+	FROM 
+		@SourceTalbe AS Src
+	GROUP By 
+		Src.APP_CODE
+)
+SELECT
+	@JsonOutput = 
+		CONCAT(COALESCE(@JsonOutput,''),Src.DataOutPut)
+FROM
+	SourceData AS Src
+
+SELECT @JsonOutput =  
+	CONCAT(
+		'{'
+		,'"APPLICATION_SETTINGS"'
+		,':{'
+		,STUFF(@JsonOutput,1,1,'')
+		,'}}'
+	)
+
+SELECT @JsonOutput
